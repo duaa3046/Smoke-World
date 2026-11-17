@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نظام البيع والجرد الذكي | دُخانيات</title>
+    <!-- خط القاهرة العربي العصري -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- مكتبة Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- أيقونات Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- مكتبة Tone.js للتأثيرات الصوتية الخفيفة عند البيع -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- مكتبة حفظ التقرير كصورة -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                        },
+                        dark: {
+                            900: '#0f172a',
+                            800: '#1e293b',
+                            700: '#334155',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f1f5f9;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        /* تحسين شريط التمرير */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        /* تأثير النقر على بطاقات البيع */
+        .product-card:active {
+            transform: scale(0.96);
+        }
+        /* إخفاء شارة Netlify بجميع أشكالها */
+        iframe[src*="netlify"],
+        iframe[id*="netlify"],
+        div[id*="netlify"],
+        div[class*="netlify"],
+        div:has(> a[href*="netlify"]),
+        div:has(> iframe[src*="netlify"]),
+        a[href*="netlify.com"],
+        a[href*="app.netlify.com"],
+        .netlify-badge {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+            pointer-events: none !important;
+            position: fixed !important;
+            left: -9999px !important;
+        }
+        /* تنسيق الطباعة لتقرير الجرد */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-report, #printable-report * {
+                visibility: visible;
+            }
+            #printable-report {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                color: black !important;
+                padding: 20px;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800 pb-24 md:pb-8">
+
+    <!-- الشريط العلوي (Header) -->
+    <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-lg border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <i data-lucide="flame" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg md:text-xl leading-tight tracking-wide text-amber-400">عالم الدخان</h1>
+                    <p id="header-date" class="text-xs text-slate-300 font-semibold">جاري تحميل التاريخ...</p>
+                </div>
+            </div>
+
+            <!-- قائمة التنقل لسطح المكتب والتابلت -->
+            <nav class="hidden md:flex items-center gap-2 bg-slate-800 p-1.5 rounded-2xl">
+                <button onclick="switchTab('pos')" id="nav-desktop-pos" class="nav-btn flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all bg-amber-500 text-slate-900 shadow">
+                    <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+                    <span>البيع السريع</span>
+                </button>
+                <button onclick="switchTab('inventory')" id="nav-desktop-inventory" class="nav-btn flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-300 hover:text-white hover:bg-slate-700">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                    <span>الجرد والتقارير</span>
+                </button>
+                <button onclick="switchTab('manage')" id="nav-desktop-manage" class="nav-btn flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-300 hover:text-white hover:bg-slate-700">
+                    <i data-lucide="package-plus" class="w-4 h-4"></i>
+                    <span>إدارة المنتجات</span>
+                </button>
+            </nav>
+
+            <!-- زر الصوت السريع -->
+            <button onclick="toggleSound()" id="sound-toggle-btn" title="تفعيل/كتم صوت النقر" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 transition">
+                <i data-lucide="volume-2" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="max-w-7xl mx-auto px-3 md:px-6 pt-4">
+
+        <!-- ========================================== -->
+        <!-- 1. قسم البيع السريع (POS) المخصص للأخ -->
+        <!-- ========================================== -->
+        <section id="tab-pos" class="space-y-4">
+            
+            <!-- شريط ملخص مبيعات اليوم المباشر (3 بطاقات متجاورة تماماً بنفس الحجم) -->
+            <div class="grid grid-cols-3 gap-2 md:gap-4">
+                <!-- مبيعات اليوم -->
+                <div class="bg-emerald-50/80 rounded-2xl p-3 md:p-4 border border-emerald-200 shadow-sm flex flex-col justify-between">
+                    <span class="text-[10px] md:text-xs font-bold text-emerald-800 block truncate">مبيعات اليوم</span>
+                    <span id="pos-today-total" class="text-sm sm:text-lg md:text-2xl font-black text-emerald-600 truncate my-1">0 د.ع</span>
+                    <span class="text-[9px] text-emerald-700 font-semibold hidden sm:block">الصندوق الحالي</span>
+                </div>
+
+                <!-- القطع المباعة -->
+                <div class="bg-white rounded-2xl p-3 md:p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <span class="text-[10px] md:text-xs font-bold text-slate-500 block truncate">القطع المباعة</span>
+                    <span id="pos-today-count" class="text-sm sm:text-lg md:text-2xl font-black text-slate-800 truncate my-1">0</span>
+                    <span class="text-[9px] text-slate-400 font-semibold hidden sm:block">إجمالي القطع</span>
+                </div>
+
+                <!-- زر سجل المبيعات (نفس الحجم والأبعاد تماماً) -->
+                <button onclick="openTodaySalesModal()" class="bg-slate-900 hover:bg-slate-800 text-white rounded-2xl p-3 md:p-4 shadow-sm flex flex-col justify-between transition active:scale-95 text-right group">
+                    <span class="text-[10px] md:text-xs font-bold text-amber-400 block truncate">سجل المبيعات</span>
+                    <span class="text-xs sm:text-sm md:text-base font-black text-white truncate my-1 group-hover:text-amber-300 transition">تعديل / حذف</span>
+                    <span class="text-[9px] text-slate-300 font-semibold hidden sm:block">إدارة المبيعات</span>
+                </button>
+            </div>
+
+            <!-- شريط البحث والتصفية حسب الفئة -->
+            <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 space-y-3">
+                <div class="relative">
+                    <i data-lucide="search" class="w-5 h-5 text-slate-400 absolute right-3.5 top-3.5"></i>
+                    <input type="text" id="pos-search" oninput="renderPOSProducts()" placeholder="ابحث عن اسم المعسل، الفحم، الفيب..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pr-11 pl-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition">
+                </div>
+
+                <!-- أزرار الفئات -->
+                <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar" id="pos-categories">
+                    <button onclick="setPOSCategory('الكل')" class="cat-btn active whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-sm bg-amber-500 text-slate-900 shadow-sm transition">الكل</button>
+                    <button onclick="setPOSCategory('معسل')" class="cat-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">🍎 معسل</button>
+                    <button onclick="setPOSCategory('فحم')" class="cat-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">🔥 فحم</button>
+                    <button onclick="setPOSCategory('فيب ونكهات')" class="cat-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">💨 فيب ونكهات</button>
+                    <button onclick="setPOSCategory('إكسسوارات')" class="cat-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">🛠️ إكسسوارات</button>
+                    <button onclick="setPOSCategory('نركيلة')" class="cat-btn whitespace-nowrap px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">🫧 نركيلة</button>
+                </div>
+            </div>
+
+            <!-- شبكة بطاقات المنتجات للبيع بلمسة واحدة -->
+            <div id="pos-products-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+                <!-- يتم تعبئة البطاقات عبر JS -->
+            </div>
+
+            <!-- رسالة في حال عدم وجود منتجات -->
+            <div id="pos-empty-state" class="hidden text-center py-12 bg-white rounded-2xl border border-slate-200">
+                <i data-lucide="package-open" class="w-14 h-14 text-slate-300 mx-auto mb-3"></i>
+                <p class="text-slate-500 font-bold text-lg">لا توجد منتجات مطابقة لبحثك</p>
+                <button onclick="switchTab('manage')" class="mt-4 bg-amber-500 text-slate-900 px-5 py-2.5 rounded-xl font-bold text-sm">إضافة منتج جديد</button>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 2. قسم الجرد والتقارير (Inventory & Reports) -->
+        <!-- ========================================== -->
+        <section id="tab-inventory" class="hidden space-y-5">
+            
+            <!-- أدوات التحكم بالفترة الزمنية والطباعة -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                <!-- تبويبات الجرد -->
+                <div class="grid grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-xl">
+                    <button onclick="setReportPeriod('daily')" id="rep-tab-daily" class="rep-tab py-2.5 px-4 rounded-lg font-bold text-sm bg-white text-slate-900 shadow transition">الجرد اليومي</button>
+                    <button onclick="setReportPeriod('weekly')" id="rep-tab-weekly" class="rep-tab py-2.5 px-4 rounded-lg font-bold text-sm text-slate-600 hover:text-slate-900 transition">الجرد الأسبوعي</button>
+                    <button onclick="setReportPeriod('monthly')" id="rep-tab-monthly" class="rep-tab py-2.5 px-4 rounded-lg font-bold text-sm text-slate-600 hover:text-slate-900 transition">الجرد الشهري</button>
+                </div>
+
+                <!-- اختيار التاريخ (يظهر في اليومي والشهري) -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div id="daily-date-picker-wrap" class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
+                        <span class="text-xs font-bold text-slate-500">تاريخ اليوم:</span>
+                        <input type="date" id="report-date-input" onchange="renderInventoryReport()" class="bg-transparent font-bold text-sm text-slate-800 focus:outline-none">
+                    </div>
+
+                    <button onclick="shareReportWhatsApp()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition">
+                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                        <span>نسخ للواتساب</span>
+                    </button>
+
+                    <button onclick="saveReportAsImage()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition">
+                        <i data-lucide="image" class="w-4 h-4"></i>
+                        <span>حفظ الصورة</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- منطقة التقرير القابلة للطباعة -->
+            <div id="printable-report" class="space-y-5">
+                <!-- عنوان الجرد الديناميكي -->
+                <div class="bg-gradient-to-l from-slate-900 to-slate-800 text-white rounded-2xl p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <span class="text-xs font-bold text-amber-400" style="letter-spacing: 0px;">ملخص الحسابات التلقائي</span>
+                        <h2 id="report-dynamic-title" class="text-xl md:text-2xl font-black mt-1">الجرد ليوم الأحد 11/15</h2>
+                    </div>
+                    <div id="report-period-subtitle" class="text-sm text-slate-300 font-semibold bg-slate-700/60 px-4 py-2 rounded-xl self-start sm:self-center">
+                        15/11/2026
+                    </div>
+                </div>
+
+                <!-- البطاقات الإحصائية الأربعة -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    <!-- إجمالي المبيعات -->
+                    <div class="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs md:text-sm font-bold text-slate-500">إجمالي المبيعات (الصندوق)</span>
+                            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <i data-lucide="wallet" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <p id="stat-total-sales" class="text-xl md:text-2xl font-black text-slate-900">0 د.ع</p>
+                    </div>
+
+                    <!-- رأس المال / التكلفة -->
+                    <div class="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs md:text-sm font-bold text-slate-500">رأس المال (التكلفة الأصلية)</span>
+                            <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <i data-lucide="coins" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <p id="stat-total-cost" class="text-xl md:text-2xl font-black text-amber-600">0 د.ع</p>
+                    </div>
+
+                    <!-- صافي الربح -->
+                    <div class="bg-emerald-50/70 rounded-2xl p-4 md:p-5 border-2 border-emerald-500/30 shadow-sm">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs md:text-sm font-extrabold text-emerald-800">صافي الربح</span>
+                            <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                                <i data-lucide="trending-up" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <p id="stat-net-profit" class="text-xl md:text-2xl font-black text-emerald-600">0 د.ع</p>
+                    </div>
+
+                    <!-- عدد القطع المباعة -->
+                    <div class="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs md:text-sm font-bold text-slate-500">عدد القطع المباعة</span>
+                            <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                                <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <p id="stat-total-items" class="text-xl md:text-2xl font-black text-slate-900">0 قطعة</p>
+                    </div>
+                </div>
+
+                <!-- جدول تفاصيل المنتجات المباعة -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 class="font-extrabold text-base text-slate-800 flex items-center gap-2">
+                            <i data-lucide="table" class="w-5 h-5 text-amber-500"></i>
+                            <span>تفاصيل المنتجات المباعة في هذه الفترة</span>
+                        </h3>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-600 text-xs md:text-sm border-b border-slate-200">
+                                    <th class="py-3.5 px-4 font-extrabold">اسم المنتج</th>
+                                    <th class="py-3.5 px-3 font-extrabold text-center">الكمية</th>
+                                    <th class="py-3.5 px-4 font-extrabold">التكلفة الكلية</th>
+                                    <th class="py-3.5 px-4 font-extrabold">المبيعات الكلية</th>
+                                    <th class="py-3.5 px-4 font-extrabold text-emerald-700">صافي الربح</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-table-body" class="divide-y divide-slate-100 text-sm">
+                                <!-- يتم تعبئة الصفوف عبر JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="report-empty-state" class="hidden text-center py-12">
+                        <p class="text-slate-400 font-bold text-base">لا توجد مبيعات مسجلة في هذه الفترة حتى الآن.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 3. قسم إدارة المنتجات (مخصص للأخت) -->
+        <!-- ========================================== -->
+        <section id="tab-manage" class="hidden space-y-6">
+            
+            <!-- شريط النسخ الاحتياطي واستعادة البيانات -->
+            <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h3 class="font-extrabold text-base text-amber-400 flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                        <span>حماية البيانات والنسخ الاحتياطي</span>
+                    </h3>
+                    <p class="text-xs text-slate-300 mt-1">يتم الحفظ تلقائياً في هذا الجهاز. يمكنك تحميل نسخة احتياطية للاحتفاظ بها أو نقلها.</p>
+                </div>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button onclick="exportBackupJSON()" class="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-900 px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>تصدير نسخة (JSON)</span>
+                    </button>
+                    <label class="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm cursor-pointer transition">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        <span>استعادة نسخة</span>
+                        <input type="file" id="import-json-input" accept=".json" onchange="importBackupJSON(event)" class="hidden">
+                    </label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- نموذج إضافة / تعديل منتج -->
+                <div class="lg:col-span-5">
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm sticky top-20">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                            <h2 id="form-title" class="font-black text-lg text-slate-800 flex items-center gap-2">
+                                <i data-lucide="plus-circle" class="w-5 h-5 text-amber-500"></i>
+                                <span>إضافة منتج جديد</span>
+                            </h2>
+                            <button type="button" id="cancel-edit-btn" onclick="resetProductForm()" class="hidden text-xs font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100">
+                                إلغاء التعديل
+                            </button>
+                        </div>
+
+                        <form id="product-form" onsubmit="handleProductSubmit(event)" class="space-y-4">
+                            <input type="hidden" id="prod-id">
+
+                            <!-- اسم المنتج -->
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1.5">اسم المنتج *</label>
+                                <input type="text" id="prod-name" required placeholder="مثال: معسل الفاخر تفاحتين 250 غم" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white">
+                            </div>
+
+                            <!-- الفئة -->
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1.5">الفئة *</label>
+                                <select id="prod-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white">
+                                    <option value="معسل">🍎 معسل</option>
+                                    <option value="فحم">🔥 فحم</option>
+                                    <option value="فيب ونكهات">💨 فيب ونكهات</option>
+                                    <option value="إكسسوارات">🛠️ إكسسوارات</option>
+                                    <option value="نركيلة">🫧 نركيلة</option>
+                                </select>
+                            </div>
+
+                            <!-- الأسعار وحساب الربح التلقائي -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-extrabold text-slate-700 mb-1.5">سعر الشراء الأصلي (د.ع) *</label>
+                                    <input type="number" id="prod-cost" required min="0" step="250" oninput="calculateLiveProfit()" placeholder="10000" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-extrabold text-slate-700 mb-1.5">سعر البيع للزبون (د.ع) *</label>
+                                    <input type="number" id="prod-price" required min="0" step="250" oninput="calculateLiveProfit()" placeholder="15000" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white">
+                                </div>
+                            </div>
+
+                            <!-- معاينة صافي ربح القطعة -->
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                                <span class="text-xs font-bold text-emerald-800">صافي ربح القطعة الواحدة:</span>
+                                <span id="live-profit-preview" class="font-black text-base text-emerald-600">0 د.ع</span>
+                            </div>
+
+                            <!-- صورة المنتج (رفع من الجهاز أو اختيار أيقونة) -->
+                            <div class="space-y-2">
+                                <label class="block text-xs font-extrabold text-slate-700">صورة المنتج (اختياري)</label>
+                                
+                                <div class="flex items-center gap-3">
+                                    <div id="image-preview-box" class="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 text-2xl">
+                                        🍎
+                                    </div>
+                                    <div class="flex-1 space-y-2">
+                                        <label class="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-xl font-bold text-xs cursor-pointer transition border border-slate-200">
+                                            <i data-lucide="image-plus" class="w-4 h-4 text-amber-600"></i>
+                                            <span>اختر صورة من الجهاز / الكاميرا</span>
+                                            <input type="file" id="prod-image-file" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
+                                        </label>
+                                        <button type="button" id="clear-img-btn" onclick="clearProductImage()" class="hidden text-xs text-red-500 font-bold hover:underline">إزالة الصورة واستخدام الأيقونة</button>
+                                    </div>
+                                </div>
+
+                                <!-- اختيار أيقونة سريعة في حال عدم رفع صورة -->
+                                <div class="pt-1">
+                                    <span class="text-[11px] text-slate-500 font-bold block mb-1.5">أو اختر أيقونة جاهزة:</span>
+                                    <div class="flex items-center gap-2 flex-wrap" id="emoji-picker">
+                                        <button type="button" onclick="selectEmoji('🍎')" class="emoji-opt w-9 h-9 rounded-lg bg-amber-100 border-2 border-amber-500 flex items-center justify-center text-lg">🍎</button>
+                                        <button type="button" onclick="selectEmoji('🍇')" class="emoji-opt w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">🍇</button>
+                                        <button type="button" onclick="selectEmoji('🍋')" class="emoji-opt w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">🍋</button>
+                                        <button type="button" onclick="selectEmoji('🔥')" class="emoji-opt w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">🔥</button>
+                                        <button type="button" onclick="selectEmoji('💨')" class="emoji-opt w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">💨</button>
+                                        <button type="button" onclick="selectEmoji('🔋')" class="emoji-opt w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">🔋</button>
+                                        <button type="button" onclick="selectEmoji('🧪')" class="emoji-opt w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">🧪</button>
+                                        <button type="button" onclick="selectEmoji('🛠️')" class="emoji-opt w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">🛠️</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" id="submit-prod-btn" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-98 text-slate-900 font-black py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-base">
+                                <i data-lucide="save" class="w-5 h-5"></i>
+                                <span>حفظ المنتج</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- قائمة المنتجات الحالية للتعديل والحذف -->
+                <div class="lg:col-span-7 space-y-3">
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <h3 class="font-black text-base text-slate-800">قائمة المنتجات المتوفرة (<span id="manage-total-count">0</span>)</h3>
+                        <input type="text" id="manage-search" oninput="renderManageProducts()" placeholder="بحث في المنتجات..." class="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+
+                    <div id="manage-products-list" class="space-y-2.5">
+                        <!-- يتم تعبئة المنتجات عبر JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- شريط التنقل السفلي للموبايل (Bottom Navigation) -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 text-white border-t border-slate-800 z-40 px-2 py-1.5 grid grid-cols-3 gap-1 shadow-2xl">
+        <button onclick="switchTab('pos')" id="nav-mobile-pos" class="mob-nav-btn flex flex-col items-center justify-center py-2 rounded-xl text-amber-400 bg-slate-800 font-bold text-xs gap-1">
+            <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+            <span>البيع السريع</span>
+        </button>
+        <button onclick="switchTab('inventory')" id="nav-mobile-inventory" class="mob-nav-btn flex flex-col items-center justify-center py-2 rounded-xl text-slate-400 font-bold text-xs gap-1">
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+            <span>الجرد والتقارير</span>
+        </button>
+        <button onclick="switchTab('manage')" id="nav-mobile-manage" class="mob-nav-btn flex flex-col items-center justify-center py-2 rounded-xl text-slate-400 font-bold text-xs gap-1">
+            <i data-lucide="package-plus" class="w-5 h-5"></i>
+            <span>المنتجات</span>
+        </button>
+    </nav>
+
+    <!-- ========================================== -->
+    <!-- نافذة (Modal) تعديل سجل مبيعات اليوم الحالي -->
+    <!-- ========================================== -->
+    <div id="today-sales-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden animate-slide-up">
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div>
+                    <h3 class="font-black text-lg text-slate-900">سجل مبيعات اليوم</h3>
+                    <p id="modal-today-date" class="text-xs text-slate-500 font-bold"></p>
+                </div>
+                <button onclick="closeTodaySalesModal()" class="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-700">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div id="today-sales-list" class="p-4 overflow-y-auto space-y-2.5 flex-1">
+                <!-- قائمة مبيعات اليوم لتعديل الكمية أو الحذف -->
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                <div>
+                    <span class="text-xs text-slate-500 font-bold block">المجموع الكلي اليوم:</span>
+                    <span id="modal-today-total" class="text-lg font-black text-emerald-600">0 د.ع</span>
+                </div>
+                <button onclick="closeTodaySalesModal()" class="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- نافذة تأكيد مخصصة (بديل confirm) -->
+    <!-- ========================================== -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3 text-red-600">
+                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <h3 id="confirm-title" class="font-black text-base text-slate-900">تأكيد الحذف</h3>
+            </div>
+            <p id="confirm-message" class="text-sm text-slate-600 font-semibold leading-relaxed">هل أنت متأكد من هذا الإجراء؟</p>
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm">إلغاء</button>
+                <button id="confirm-action-btn" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm">نعم، متأكد</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- إشعار سريع مع زر تراجع (Toast Notification) -->
+    <!-- ========================================== -->
+    <div id="toast-container" class="fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 z-50 pointer-events-none flex flex-col gap-2 items-center md:items-end">
+        <!-- يظهر الإشعار هنا -->
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. إدارة الحالة والبيانات (State Management)
+        // ==========================================
+        const STORAGE_KEYS = {
+            PRODUCTS: 'dukhaniyat_products_v1',
+            SALES: 'dukhaniyat_sales_v1',
+            SOUND: 'dukhaniyat_sound_v1'
+        };
+
+        // بيانات تجريبية افتراضية عند فتح التطبيق لأول مرة
+        const DEFAULT_PRODUCTS = [
+            { id: 'p1', name: 'معسل الفاخر تفاحتين 250 غم', category: 'معسل', cost: 10000, price: 13000, emoji: '🍎', image: null },
+            { id: 'p2', name: 'معسل مزايا عنب نعناع 250 غم', category: 'معسل', cost: 9000, price: 12000, emoji: '🍇', image: null },
+            { id: 'p3', name: 'فحم جوز الهند كوكو 1 كيلو', category: 'فحم', cost: 4500, price: 6000, emoji: '🔥', image: null },
+            { id: 'p4', name: 'سحبة فيب جاهزة 5000 سحبة', category: 'فيب ونكهات', cost: 14000, price: 18000, emoji: '💨', image: null },
+            { id: 'p5', name: 'نكهة فيب سولت 30 مل', category: 'فيب ونكهات', cost: 11000, price: 15000, emoji: '🧪', image: null },
+            { id: 'p6', name: 'رأس شيشة سيليكون + حراري', category: 'إكسسوارات', cost: 5000, price: 8000, emoji: '🛠️', image: null },
+            { id: 'p7', name: 'صوندة شيشة استخدام مرة واحدة', category: 'إكسسوارات', cost: 1000, price: 2000, emoji: '🛠️', image: null },
+            { id: 'p8', name: 'سلفون (قصدير) مثقب جاهز', category: 'إكسسوارات', cost: 1500, price: 2500, emoji: '🔥', image: null }
+        ];
+
+        let products = [];
+        let sales = []; // { id, productId, name, cost, price, timestamp, dateStr }
+        let currentPOSCategory = 'الكل';
+        let currentReportPeriod = 'daily'; // daily, weekly, monthly
+        let selectedEmoji = '🍎';
+        let uploadedBase64Image = null;
+        let soundEnabled = true;
+
+        // ==========================================
+        // 2. دوال التاريخ والعملة (Utilities)
+        // ==========================================
+        const ARABIC_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+        // الحصول على تاريخ اليوم بصيغة YYYY-MM-DD حسب التوقيت المحلي
+        function getLocalDateStr(dateObj = new Date()) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // تنسيق التاريخ العربي: "الأحد 11/15"
+        function formatArabicDayMonth(dateStr) {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            const dayName = ARABIC_DAYS[dateObj.getDay()];
+            return `${dayName} ${m}/${d}`;
+        }
+
+        // تنسيق التاريخ الكامل: "الأحد 15/11/2026"
+        function formatFullArabicDate(dateStr) {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            const dayName = ARABIC_DAYS[dateObj.getDay()];
+            return `${dayName} ${d}/${m}/${y}`;
+        }
+
+        // تنسيق العملة بالدينار العراقي
+        function formatIQD(amount) {
+            return Number(amount || 0).toLocaleString('en-US') + ' د.ع';
+        }
+
+        // صوت نقرة لطيفة عند البيع باستخدام Tone.js
+        function playSaleSound() {
+            if (!soundEnabled) return;
+            try {
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+                const synth = new Tone.Synth({
+                    oscillator: { type: 'sine' },
+                    envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
+                }).toDestination();
+                synth.triggerAttackRelease('C6', '32n');
+            } catch (e) {
+                // تجاهل أخطاء الصوت في حال عدم تفاعل المستخدم
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem(STORAGE_KEYS.SOUND, JSON.stringify(soundEnabled));
+            updateSoundIcon();
+            showToast(soundEnabled ? 'تم تفعيل صوت النقر' : 'تم كتم الصوت');
+        }
+
+        function updateSoundIcon() {
+            const btn = document.getElementById('sound-toggle-btn');
+            btn.innerHTML = soundEnabled 
+                ? '<i data-lucide="volume-2" class="w-5 h-5"></i>' 
+                : '<i data-lucide="volume-x" class="w-5 h-5 text-slate-400"></i>';
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // 3. تهيئة التطبيق وحفظ البيانات
+        // ==========================================
+        function initApp() {
+            // تحميل المنتجات
+            const savedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+            if (savedProducts) {
+                products = JSON.parse(savedProducts);
+            } else {
+                products = [...DEFAULT_PRODUCTS];
+                saveProducts();
+            }
+
+            // تحميل المبيعات
+            const savedSales = localStorage.getItem(STORAGE_KEYS.SALES);
+            sales = savedSales ? JSON.parse(savedSales) : [];
+
+            // تحميل إعداد الصوت
+            const savedSound = localStorage.getItem(STORAGE_KEYS.SOUND);
+            if (savedSound !== null) {
+                soundEnabled = JSON.parse(savedSound);
+            }
+            updateSoundIcon();
+
+            // ضبط تواريخ الواجهة
+            const todayStr = getLocalDateStr();
+            document.getElementById('header-date').textContent = formatFullArabicDate(todayStr);
+            document.getElementById('report-date-input').value = todayStr;
+
+            // عرض الواجهات
+            renderPOSProducts();
+            updatePOSTodaySummary();
+            renderManageProducts();
+            lucide.createIcons();
+        }
+
+        function saveProducts() {
+            localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+        }
+
+        function saveSales() {
+            localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
+            updatePOSTodaySummary();
+        }
+
+        // ==========================================
+        // 4. التنقل بين الأقسام الثلاثة
+        // ==========================================
+        function switchTab(tabName) {
+            // إخفاء جميع الأقسام
+            ['pos', 'inventory', 'manage'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+            });
+            // إظهار القسم المطلوب
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+            // تحديث أزرار سطح المكتب
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-500', 'text-slate-900', 'shadow');
+                btn.classList.add('text-slate-300', 'hover:text-white', 'hover:bg-slate-700');
+            });
+            const activeDesktop = document.getElementById(`nav-desktop-${tabName}`);
+            activeDesktop.classList.remove('text-slate-300', 'hover:text-white', 'hover:bg-slate-700');
+            activeDesktop.classList.add('bg-amber-500', 'text-slate-900', 'shadow');
+
+            // تحديث أزرار الموبايل
+            document.querySelectorAll('.mob-nav-btn').forEach(btn => {
+                btn.classList.remove('text-amber-400', 'bg-slate-800');
+                btn.classList.add('text-slate-400');
+            });
+            const activeMobile = document.getElementById(`nav-mobile-${tabName}`);
+            activeMobile.classList.remove('text-slate-400');
+            activeMobile.classList.add('text-amber-400', 'bg-slate-800');
+
+            // تحديث البيانات حسب الصفحة المفتوحة
+            if (tabName === 'pos') {
+                renderPOSProducts();
+                updatePOSTodaySummary();
+            } else if (tabName === 'inventory') {
+                renderInventoryReport();
+            } else if (tabName === 'manage') {
+                renderManageProducts();
+            }
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // 5. منطق واجهة البيع السريع (POS)
+        // ==========================================
+        function setPOSCategory(category) {
+            currentPOSCategory = category;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if (btn.textContent.includes(category)) {
+                    btn.classList.remove('bg-slate-100', 'text-slate-600');
+                    btn.classList.add('bg-amber-500', 'text-slate-900', 'shadow-sm');
+                } else {
+                    btn.classList.remove('bg-amber-500', 'text-slate-900', 'shadow-sm');
+                    btn.classList.add('bg-slate-100', 'text-slate-600');
+                }
+            });
+            renderPOSProducts();
+        }
+
+        function renderPOSProducts() {
+            const grid = document.getElementById('pos-products-grid');
+            const emptyState = document.getElementById('pos-empty-state');
+            const searchQuery = document.getElementById('pos-search').value.trim().toLowerCase();
+
+            const filtered = products.filter(p => {
+                const matchCat = currentPOSCategory === 'الكل' || p.category === currentPOSCategory;
+                const matchSearch = p.name.toLowerCase().includes(searchQuery);
+                return matchCat && matchSearch;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            grid.innerHTML = filtered.map(product => {
+                const visual = product.image 
+                    ? `<img src="${product.image}" alt="${product.name}" class="w-full h-28 sm:h-32 object-cover rounded-xl mb-2.5 bg-slate-100">`
+                    : `<div class="w-full h-28 sm:h-32 rounded-xl mb-2.5 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-5xl shadow-inner">${product.emoji || '📦'}</div>`;
+
+                return `
+                    <button onclick="recordSale('${product.id}')" class="product-card bg-white hover:border-amber-500 border-2 border-slate-200/80 rounded-2xl p-3 text-right shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden">
+                        <span class="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-lg">
+                            ${product.category}
+                        </span>
+                        <div class="w-full">
+                            ${visual}
+                            <h3 class="font-extrabold text-sm sm:text-base text-slate-800 leading-snug line-clamp-2 group-hover:text-amber-700 transition">
+                                ${product.name}
+                            </h3>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between w-full">
+                            <span class="font-black text-base sm:text-lg text-emerald-600">${formatIQD(product.price)}</span>
+                            <span class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 group-hover:bg-amber-500 group-hover:text-slate-900 flex items-center justify-center transition">
+                                <i data-lucide="plus" class="w-5 h-5"></i>
+                            </span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // تسجيل عملية بيع بضغطة واحدة
+        function recordSale(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const saleRecord = {
+                id: 's_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                productId: product.id,
+                name: product.name,
+                cost: Number(product.cost),
+                price: Number(product.price),
+                timestamp: Date.now(),
+                dateStr: getLocalDateStr()
+            };
+
+            sales.push(saleRecord);
+            saveSales();
+            playSaleSound();
+
+            // إشعار فوري مع زر تراجع
+            showToast(`تم بيع: ${product.name} (${formatIQD(product.price)})`, saleRecord.id);
+        }
+
+        // التراجع عن عملية بيع
+        function undoSale(saleId, toastElement) {
+            const index = sales.findIndex(s => s.id === saleId);
+            if (index !== -1) {
+                sales.splice(index, 1);
+                saveSales();
+                if (toastElement) toastElement.remove();
+                showToast('تم التراجع وإلغاء البيع بنجاح');
+                if (!document.getElementById('today-sales-modal').classList.contains('hidden')) {
+                    renderTodaySalesModalList();
+                }
+            }
+        }
+
+        function updatePOSTodaySummary() {
+            const todayStr = getLocalDateStr();
+            const todaySales = sales.filter(s => s.dateStr === todayStr);
+            const totalAmount = todaySales.reduce((sum, item) => sum + item.price, 0);
+
+            document.getElementById('pos-today-total').textContent = formatIQD(totalAmount);
+            document.getElementById('pos-today-count').textContent = todaySales.length + ' قطعة';
+        }
+
+        // ==========================================
+        // 6. نافذة سجل مبيعات اليوم (للتعديل السريع)
+        // ==========================================
+        function openTodaySalesModal() {
+            const todayStr = getLocalDateStr();
+            document.getElementById('modal-today-date').textContent = formatFullArabicDate(todayStr);
+            renderTodaySalesModalList();
+            document.getElementById('today-sales-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeTodaySalesModal() {
+            document.getElementById('today-sales-modal').classList.add('hidden');
+        }
+
+        function renderTodaySalesModalList() {
+            const todayStr = getLocalDateStr();
+            const todaySales = sales.filter(s => s.dateStr === todayStr);
+            const listEl = document.getElementById('today-sales-list');
+            const totalEl = document.getElementById('modal-today-total');
+
+            const totalAmount = todaySales.reduce((sum, s) => sum + s.price, 0);
+            totalEl.textContent = formatIQD(totalAmount);
+
+            if (todaySales.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-8 text-slate-400 font-bold">لم يتم تسجيل أي مبيعات اليوم بعد.</div>`;
+                return;
+            }
+
+            // تجميع المبيعات المتشابهة لتسهيل زيادة أو إنقاص العدد
+            const grouped = {};
+            todaySales.forEach(s => {
+                if (!grouped[s.productId]) {
+                    grouped[s.productId] = {
+                        productId: s.productId,
+                        name: s.name,
+                        price: s.price,
+                        count: 0,
+                        saleIds: []
+                    };
+                }
+                grouped[s.productId].count += 1;
+                grouped[s.productId].saleIds.push(s.id);
+            });
+
+            listEl.innerHTML = Object.values(grouped).map(item => `
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-between gap-2">
+                    <div class="flex-1">
+                        <h4 class="font-extrabold text-sm text-slate-800">${item.name}</h4>
+                        <span class="text-xs text-slate-500 font-bold">سعر القطعة: ${formatIQD(item.price)}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="decreaseTodayProduct('${item.productId}')" class="w-8 h-8 rounded-xl bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center font-black">
+                            <i data-lucide="minus" class="w-4 h-4"></i>
+                        </button>
+                        <span class="w-8 text-center font-black text-base text-slate-900">${item.count}</span>
+                        <button onclick="increaseTodayProduct('${item.productId}')" class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 hover:bg-emerald-200 flex items-center justify-center font-black">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function increaseTodayProduct(productId) {
+            recordSale(productId);
+            renderTodaySalesModalList();
+        }
+
+        function decreaseTodayProduct(productId) {
+            const todayStr = getLocalDateStr();
+            // البحث عن آخر عملية بيع لهذا المنتج اليوم وحذفها
+            for (let i = sales.length - 1; i >= 0; i--) {
+                if (sales[i].dateStr === todayStr && sales[i].productId === productId) {
+                    sales.splice(i, 1);
+                    saveSales();
+                    renderTodaySalesModalList();
+                    break;
+                }
+            }
+        }
+
+        // ==========================================
+        // 7. منطق الجرد والتقارير (يومي، أسبوعي، شهري)
+        // ==========================================
+        function setReportPeriod(period) {
+            currentReportPeriod = period;
+            
+            document.querySelectorAll('.rep-tab').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-slate-900', 'shadow');
+                btn.classList.add('text-slate-600');
+            });
+            const activeTab = document.getElementById(`rep-tab-${period}`);
+            activeTab.classList.remove('text-slate-600');
+            activeTab.classList.add('bg-white', 'text-slate-900', 'shadow');
+
+            // إظهار أو إخفاء منتقي التاريخ اليومي
+            const datePickerWrap = document.getElementById('daily-date-picker-wrap');
+            if (period === 'daily') {
+                datePickerWrap.classList.remove('hidden');
+            } else {
+                datePickerWrap.classList.add('hidden');
+            }
+
+            renderInventoryReport();
+        }
+
+        function renderInventoryReport() {
+            const selectedDateStr = document.getElementById('report-date-input').value || getLocalDateStr();
+            const titleEl = document.getElementById('report-dynamic-title');
+            const subtitleEl = document.getElementById('report-period-subtitle');
+
+            let filteredSales = [];
+
+            if (currentReportPeriod === 'daily') {
+                // الجرد اليومي
+                titleEl.textContent = `الجرد ليوم ${formatArabicDayMonth(selectedDateStr)}`;
+                subtitleEl.textContent = formatFullArabicDate(selectedDateStr);
+                filteredSales = sales.filter(s => s.dateStr === selectedDateStr);
+
+            } else if (currentReportPeriod === 'weekly') {
+                // الجرد الأسبوعي (آخر 7 أيام شاملة اليوم)
+                const end = new Date();
+                const start = new Date();
+                start.setDate(end.getDate() - 6);
+                
+                const startStr = getLocalDateStr(start);
+                const endStr = getLocalDateStr(end);
+
+                titleEl.textContent = 'الجرد الأسبوعي (آخر 7 أيام)';
+                subtitleEl.textContent = `من ${formatArabicDayMonth(startStr)} إلى ${formatArabicDayMonth(endStr)}`;
+
+                filteredSales = sales.filter(s => s.dateStr >= startStr && s.dateStr <= endStr);
+
+            } else if (currentReportPeriod === 'monthly') {
+                // الجرد الشهري (الشهر الحالي)
+                const now = new Date();
+                const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const arabicMonths = ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
+                
+                titleEl.textContent = `الجرد الشهري - شهر ${arabicMonths[now.getMonth()]}`;
+                subtitleEl.textContent = `${now.getMonth() + 1} / ${now.getFullYear()}`;
+
+                filteredSales = sales.filter(s => s.dateStr.startsWith(yearMonth));
+            }
+
+            // حساب الإحصائيات
+            let totalSales = 0;
+            let totalCost = 0;
+            const totalItems = filteredSales.length;
+
+            // تجميع حسب المنتج للجدول التفصيلي
+            const productSummary = {};
+
+            filteredSales.forEach(s => {
+                totalSales += s.price;
+                totalCost += s.cost;
+
+                if (!productSummary[s.name]) {
+                    productSummary[s.name] = {
+                        name: s.name,
+                        qty: 0,
+                        costTotal: 0,
+                        salesTotal: 0,
+                        profitTotal: 0
+                    };
+                }
+                productSummary[s.name].qty += 1;
+                productSummary[s.name].costTotal += s.cost;
+                productSummary[s.name].salesTotal += s.price;
+                productSummary[s.name].profitTotal += (s.price - s.cost);
+            });
+
+            const netProfit = totalSales - totalCost;
+
+            // تحديث البطاقات الإحصائية
+            document.getElementById('stat-total-sales').textContent = formatIQD(totalSales);
+            document.getElementById('stat-total-cost').textContent = formatIQD(totalCost);
+            document.getElementById('stat-net-profit').textContent = formatIQD(netProfit);
+            document.getElementById('stat-total-items').textContent = `${totalItems} قطعة`;
+
+            // تعبئة الجدول التفصيلي
+            const tbody = document.getElementById('report-table-body');
+            const emptyState = document.getElementById('report-empty-state');
+            const summaryList = Object.values(productSummary).sort((a, b) => b.qty - a.qty);
+
+            if (summaryList.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                tbody.innerHTML = summaryList.map(row => `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3.5 px-4 font-bold text-slate-800">${row.name}</td>
+                        <td class="py-3.5 px-3 text-center">
+                            <span class="bg-slate-100 text-slate-800 font-black px-2.5 py-1 rounded-lg text-xs">${row.qty}</span>
+                        </td>
+                        <td class="py-3.5 px-4 font-semibold text-slate-600">${formatIQD(row.costTotal)}</td>
+                        <td class="py-3.5 px-4 font-bold text-slate-900">${formatIQD(row.salesTotal)}</td>
+                        <td class="py-3.5 px-4 font-black text-emerald-600">${formatIQD(row.profitTotal)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // مشاركة ملخص الجرد كنص للواتساب
+        function shareReportWhatsApp() {
+            const title = document.getElementById('report-dynamic-title').textContent;
+            const totalSales = document.getElementById('stat-total-sales').textContent;
+            const totalCost = document.getElementById('stat-total-cost').textContent;
+            const netProfit = document.getElementById('stat-net-profit').textContent;
+            const totalItems = document.getElementById('stat-total-items').textContent;
+
+            let text = `📊 *${title}*\n`;
+            text += `------------------------\n`;
+            text += `💰 إجمالي المبيعات: ${totalSales}\n`;
+            text += `📦 رأس المال (التكلفة): ${totalCost}\n`;
+            text += `✅ *صافي الربح: ${netProfit}*\n`;
+            text += `🛒 عدد القطع المباعة: ${totalItems}\n`;
+            text += `------------------------\n`;
+
+            const rows = document.querySelectorAll('#report-table-body tr');
+            if (rows.length > 0) {
+                text += `*التفاصيل:*\n`;
+                rows.forEach(tr => {
+                    const cols = tr.querySelectorAll('td');
+                    text += `• ${cols[0].textContent} (العدد: ${cols[1].textContent.trim()}) = ${cols[3].textContent}\n`;
+                });
+            }
+
+            // نسخ النص للحافظة بطريقة متوافقة مع جميع المتصفحات
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            showToast('تم نسخ تقرير الجرد! يمكنك لصقه الآن في الواتساب');
+        }
+
+        // ==========================================
+        // 8. إدارة المنتجات (إضافة، تعديل، حذف، صور)
+        // ==========================================
+        function calculateLiveProfit() {
+            const cost = Number(document.getElementById('prod-cost').value) || 0;
+            const price = Number(document.getElementById('prod-price').value) || 0;
+            const profit = price - cost;
+            const previewEl = document.getElementById('live-profit-preview');
+            
+            previewEl.textContent = formatIQD(profit);
+            if (profit < 0) {
+                previewEl.classList.remove('text-emerald-600');
+                previewEl.classList.add('text-red-600');
+            } else {
+                previewEl.classList.remove('text-red-600');
+                previewEl.classList.add('text-emerald-600');
+            }
+        }
+
+        function selectEmoji(emoji) {
+            selectedEmoji = emoji;
+            uploadedBase64Image = null;
+            document.getElementById('clear-img-btn').classList.add('hidden');
+            document.getElementById('image-preview-box').innerHTML = emoji;
+
+            document.querySelectorAll('.emoji-opt').forEach(btn => {
+                if (btn.textContent === emoji) {
+                    btn.classList.remove('bg-slate-100', 'border-slate-200');
+                    btn.classList.add('bg-amber-100', 'border-2', 'border-amber-500');
+                } else {
+                    btn.classList.remove('bg-amber-100', 'border-2', 'border-amber-500');
+                    btn.classList.add('bg-slate-100', 'border', 'border-slate-200');
+                }
+            });
+        }
+
+        // ضغط الصورة المرفوعة تلقائياً للحفاظ على مساحة localStorage
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_SIZE = 250; // حجم مثالي لبطاقات الكاشير
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    uploadedBase64Image = canvas.toDataURL('image/jpeg', 0.75);
+                    document.getElementById('image-preview-box').innerHTML = `<img src="${uploadedBase64Image}" class="w-full h-full object-cover">`;
+                    document.getElementById('clear-img-btn').classList.remove('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearProductImage() {
+            uploadedBase64Image = null;
+            document.getElementById('prod-image-file').value = '';
+            document.getElementById('clear-img-btn').classList.add('hidden');
+            document.getElementById('image-preview-box').innerHTML = selectedEmoji;
+        }
+
+        function handleProductSubmit(event) {
+            event.preventDefault();
+            
+            const id = document.getElementById('prod-id').value;
+            const name = document.getElementById('prod-name').value.trim();
+            const category = document.getElementById('prod-category').value;
+            const cost = Number(document.getElementById('prod-cost').value);
+            const price = Number(document.getElementById('prod-price').value);
+
+            if (!name) return;
+
+            if (id) {
+                // تعديل منتج موجود
+                const index = products.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    products[index] = {
+                        ...products[index],
+                        name,
+                        category,
+                        cost,
+                        price,
+                        emoji: selectedEmoji,
+                        image: uploadedBase64Image
+                    };
+                    showToast('تم تحديث بيانات المنتج بنجاح');
+                }
+            } else {
+                // إضافة منتج جديد
+                const newProduct = {
+                    id: 'p_' + Date.now(),
+                    name,
+                    category,
+                    cost,
+                    price,
+                    emoji: selectedEmoji,
+                    image: uploadedBase64Image
+                };
+                products.unshift(newProduct);
+                showToast('تمت إضافة المنتج الجديد بنجاح');
+            }
+
+            saveProducts();
+            resetProductForm();
+            renderManageProducts();
+            renderPOSProducts();
+        }
+
+        function editProduct(id) {
+            const product = products.find(p => p.id === id);
+            if (!product) return;
+
+            document.getElementById('prod-id').value = product.id;
+            document.getElementById('prod-name').value = product.name;
+            document.getElementById('prod-category').value = product.category;
+            document.getElementById('prod-cost').value = product.cost;
+            document.getElementById('prod-price').value = product.price;
+
+            selectedEmoji = product.emoji || '🍎';
+            uploadedBase64Image = product.image || null;
+
+            if (uploadedBase64Image) {
+                document.getElementById('image-preview-box').innerHTML = `<img src="${uploadedBase64Image}" class="w-full h-full object-cover">`;
+                document.getElementById('clear-img-btn').classList.remove('hidden');
+            } else {
+                selectEmoji(selectedEmoji);
+            }
+
+            calculateLiveProfit();
+
+            document.getElementById('form-title').innerHTML = `<i data-lucide="edit-3" class="w-5 h-5 text-amber-500"></i><span>تعديل المنتج</span>`;
+            document.getElementById('submit-prod-btn').innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i><span>حفظ التعديلات</span>`;
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+            lucide.createIcons();
+
+            // التمرير للأعلى لرؤية النموذج على الموبايل
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetProductForm() {
+            document.getElementById('product-form').reset();
+            document.getElementById('prod-id').value = '';
+            uploadedBase64Image = null;
+            selectEmoji('🍎');
+            document.getElementById('live-profit-preview').textContent = '0 د.ع';
+            document.getElementById('form-title').innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-amber-500"></i><span>إضافة منتج جديد</span>`;
+            document.getElementById('submit-prod-btn').innerHTML = `<i data-lucide="save" class="w-5 h-5"></i><span>حفظ المنتج</span>`;
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function confirmDeleteProduct(id) {
+            const product = products.find(p => p.id === id);
+            if (!product) return;
+
+            openConfirmModal(
+                'حذف المنتج',
+                `هل أنتِ متأكدة من حذف "${product.name}"؟ (لن تتأثر سجلات الجرد السابقة لهذا المنتج).`,
+                () => {
+                    products = products.filter(p => p.id !== id);
+                    saveProducts();
+                    renderManageProducts();
+                    renderPOSProducts();
+                    showToast('تم حذف المنتج');
+                }
+            );
+        }
+
+        function renderManageProducts() {
+            const listEl = document.getElementById('manage-products-list');
+            const search = document.getElementById('manage-search').value.trim().toLowerCase();
+            
+            const filtered = products.filter(p => p.name.toLowerCase().includes(search) || p.category.includes(search));
+            document.getElementById('manage-total-count').textContent = products.length;
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div class="bg-white rounded-2xl p-8 text-center text-slate-400 font-bold border border-slate-200">لا توجد منتجات مطابقة.</div>`;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(p => {
+                const profit = p.price - p.cost;
+                const thumb = p.image 
+                    ? `<img src="${p.image}" class="w-14 h-14 rounded-xl object-cover shrink-0 bg-slate-100">`
+                    : `<div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-2xl shrink-0">${p.emoji || '📦'}</div>`;
+
+                return `
+                    <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm flex items-center justify-between gap-3 hover:border-slate-300 transition">
+                        <div class="flex items-center gap-3 min-w-0">
+                            ${thumb}
+                            <div class="min-w-0">
+                                <span class="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">${p.category}</span>
+                                <h4 class="font-extrabold text-sm sm:text-base text-slate-800 truncate mt-0.5">${p.name}</h4>
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-1">
+                                    <span class="text-slate-500 font-semibold">الشراء: <b class="text-slate-700">${formatIQD(p.cost)}</b></span>
+                                    <span class="text-slate-500 font-semibold">البيع: <b class="text-blue-600">${formatIQD(p.price)}</b></span>
+                                    <span class="text-emerald-600 font-extrabold">الربح: ${formatIQD(profit)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="editProduct('${p.id}')" title="تعديل" class="p-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+                                <i data-lucide="edit-2" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="confirmDeleteProduct('${p.id}')" title="حذف" class="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // 9. النسخ الاحتياطي والاستعادة (JSON)
+        // ==========================================
+        function exportBackupJSON() {
+            const backupData = {
+                app: 'DukhaniyatPOS',
+                exportDate: new Date().toISOString(),
+                products,
+                sales
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `جرد_ومنتجات_المحل_${getLocalDateStr()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            showToast('تم تحميل ملف النسخة الاحتياطية بنجاح');
+        }
+
+        function importBackupJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data && Array.isArray(data.products) && Array.isArray(data.sales)) {
+                        products = data.products;
+                        sales = data.sales;
+                        saveProducts();
+                        saveSales();
+                        renderManageProducts();
+                        renderPOSProducts();
+                        showToast('تمت استعادة البيانات والمنتجات بنجاح!');
+                    } else {
+                        showToast('ملف النسخة الاحتياطية غير صالح');
+                    }
+                } catch (err) {
+                    showToast('حدث خطأ أثناء قراءة الملف');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // ==========================================
+        // 10. الإشعارات ونوافذ التأكيد (UI Helpers)
+        // ==========================================
+        function showToast(message, undoSaleId = null) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'pointer-events-auto bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3 text-sm font-bold max-w-md w-full sm:w-auto justify-between transition-all';
+            
+            let html = `
+                <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            if (undoSaleId) {
+                html += `<button class="undo-btn bg-amber-500 hover:bg-amber-600 text-slate-900 px-3 py-1 rounded-xl text-xs font-black shrink-0 transition">تراجع</button>`;
+            }
+
+            toast.innerHTML = html;
+
+            if (undoSaleId) {
+                toast.querySelector('.undo-btn').onclick = () => undoSale(undoSaleId, toast);
+            }
+
+            // الإبقاء على آخر إشعارين فقط لعدم ازدحام الشاشة
+            if (container.children.length >= 2) {
+                container.firstElementChild.remove();
+            }
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, undoSaleId ? 4500 : 2500);
+        }
+
+        function openConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            const actionBtn = document.getElementById('confirm-action-btn');
+            actionBtn.onclick = () => {
+                onConfirm();
+                closeConfirmModal();
+            };
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        // حفظ تقرير الجرد كصورة مباشرة
+        function saveReportAsImage() {
+            const reportArea = document.getElementById('printable-report');
+            if (!reportArea) return;
+            showToast('جاري حفظ صورة التقرير...');
+            html2canvas(reportArea, {
+                scale: 2,
+                backgroundColor: '#f1f5f9',
+                useCORS: true,
+                onclone: (clonedDoc) => {
+                    const clonedReport = clonedDoc.getElementById('printable-report');
+                    if (clonedReport) {
+                        clonedReport.style.letterSpacing = '0px';
+                        clonedReport.querySelectorAll('*').forEach(el => {
+                            el.style.letterSpacing = '0px';
+                        });
+                    }
+                }
+            }).then(canvas => {
+                const link = document.createElement('a');
+                const dateStr = document.getElementById('report-date-input').value || getLocalDateStr();
+                link.download = `جرد_عالم_الدخان_${dateStr}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast('تم حفظ صورة الجرد بنجاح!');
+            }).catch(() => {
+                showToast('حدث خطأ أثناء حفظ الصورة');
+            });
+        }
+
+        // إزالة شارة Netlify تلقائياً بجميع الطرق (بما فيها Shadow DOM والعناصر المحقونة بعد التحميل)
+        (function removeNetlifyBadge() {
+            const appIds = new Set(['tab-pos', 'tab-inventory', 'tab-manage', 'today-sales-modal', 'confirm-modal', 'toast-container']);
+            const clean = () => {
+                // 1. البحث المباشر عن الروابط والإطارات والعناصر المرتبطة بـ netlify
+                document.querySelectorAll('iframe, a, div, aside, section').forEach(el => {
+                    if (appIds.has(el.id)) return;
+                    const src = (el.getAttribute('src') || '').toLowerCase();
+                    const href = (el.getAttribute('href') || '').toLowerCase();
+                    const id = (el.id || '').toLowerCase();
+                    const cls = (typeof el.className === 'string' ? el.className : '').toLowerCase();
+                    const text = (el.textContent || '').trim();
+
+                    if (
+                        src.includes('netlify') ||
+                        href.includes('netlify') ||
+                        id.includes('netlify') ||
+                        cls.includes('netlify') ||
+                        text === 'Powered by Netlify'
+                    ) {
+                        const wrapper = el.closest('body > div, body > aside, body > iframe');
+                        if (wrapper && !appIds.has(wrapper.id) && wrapper.tagName !== 'HEADER' && wrapper.tagName !== 'MAIN' && wrapper.tagName !== 'NAV') {
+                            wrapper.remove();
+                        } else {
+                            el.remove();
+                        }
+                    }
+                });
+
+                // 2. فحص أي عناصر مباشرة تحت body أو html غير تابعة للتطبيق (مثل حاويات Shadow DOM التي تحقنها Netlify Drop)
+                [document.documentElement, document.body].forEach(root => {
+                    if (!root) return;
+                    Array.from(root.children).forEach(child => {
+                        const tag = child.tagName;
+                        if (['HEAD', 'BODY', 'HEADER', 'MAIN', 'NAV', 'SCRIPT', 'STYLE', 'LINK'].includes(tag)) return;
+                        if (appIds.has(child.id)) return;
+                        const shadowText = child.shadowRoot ? (child.shadowRoot.innerHTML || '').toLowerCase() : '';
+                        const outer = (child.outerHTML || '').toLowerCase();
+                        if (shadowText.includes('netlify') || outer.includes('netlify') || child.shadowRoot) {
+                            child.remove();
+                        }
+                    });
+                });
+            };
+
+            clean();
+            setInterval(clean, 500);
+            const observer = new MutationObserver(clean);
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+        })();
+
+        // تشغيل التطبيق عند اكتمال التحميل
+        window.onload = initApp;
+    </script>
+</body>
+</html>
