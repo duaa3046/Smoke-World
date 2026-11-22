@@ -541,21 +541,18 @@
 
         const INITIAL_PRODUCTS = [
             {
-                id: 'p_101',
-                name: 'فوزل 40K',
-                category: 'فيب',
-                cost: 10000,
-                price: 13000,
+                id: 'p_101', name: 'فوزل 40K', category: 'فيب', cost: 10000, price: 13000,
                 image: 'https://example.com/apple-shisha.jpg'
             },
             {
-                id: 'p_102',
-                name: 'فوزل 12K',
-                category: 'فيب',
-                cost: 4500,
-                price: 6000,
+                id: 'p_102', name: 'فوزل 12K', category: 'فيب', cost: 4500, price: 6000,
                 image: null
+            },
+            {
+                id: 'p_103', name: 'اسم المنتج الجديد', category: 'فيب', cost: 8000, price: 11000,
+              image: 'https://example.com/product.jpg'
             }
+
         ];
 
         let products = [];
@@ -634,14 +631,9 @@
         // 3. تهيئة التطبيق وحفظ البيانات
         // ==========================================
         function initApp() {
-            // تحميل المنتجات من التخزين أو من INITIAL_PRODUCTS عند أول تشغيل للنسخة
-            const savedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-            if (savedProducts) {
-                products = JSON.parse(savedProducts);
-            } else {
-                products = [...INITIAL_PRODUCTS];
-                saveProducts();
-            }
+            // تحميل المنتجات مباشرة من مصفوفة الكود في كل مرة تُعاد فيها تحميل الصفحة
+            products = [...INITIAL_PRODUCTS];
+            saveProducts();
 
             // تحميل المبيعات
             const savedSales = localStorage.getItem(STORAGE_KEYS.SALES);
