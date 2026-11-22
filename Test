@@ -534,10 +534,29 @@
         // 1. إدارة الحالة والبيانات (State Management)
         // ==========================================
         const STORAGE_KEYS = {
-            PRODUCTS: 'dukhaniyat_products_v2',
+            PRODUCTS: 'dukhaniyat_products_v3',
             SALES: 'dukhaniyat_sales_v2',
             SOUND: 'dukhaniyat_sound_v1'
         };
+
+        const INITIAL_PRODUCTS = [
+            {
+                id: 'p_101',
+                name: 'فوزل 40K',
+                category: 'فيب',
+                cost: 10000,
+                price: 13000,
+                image: 'https://example.com/apple-shisha.jpg'
+            },
+            {
+                id: 'p_102',
+                name: 'فوزل 12K',
+                category: 'فيب',
+                cost: 4500,
+                price: 6000,
+                image: null
+            }
+        ];
 
         let products = [];
         let sales = []; // { id, productId, name, cost, price, timestamp, dateStr }
@@ -615,9 +634,9 @@
         // 3. تهيئة التطبيق وحفظ البيانات
         // ==========================================
         function initApp() {
-            // تحميل المنتجات (يبدأ فارغاً لرفع المنتجات الحقيقية)
-            const savedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-            products = savedProducts ? JSON.parse(savedProducts) : [];
+            // تحميل المنتجات مباشرة من مصفوفة الكود في كل مرة تُعاد فيها تحميل الصفحة
+            products = [...INITIAL_PRODUCTS];
+            saveProducts();
 
             // تحميل المبيعات
             const savedSales = localStorage.getItem(STORAGE_KEYS.SALES);
