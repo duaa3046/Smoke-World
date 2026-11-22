@@ -1,0 +1,8 @@
+{
+    id: 'p_103',
+    name: 'اسم المنتج الجديد',
+    category: 'فيب',
+    cost: 8000,
+    price: 11000,
+    image: 'https://example.com/product.jpg'
+}
